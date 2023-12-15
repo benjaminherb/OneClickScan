@@ -3,9 +3,9 @@ import sys
 import subprocess
 import tempfile
 import logging
-
-from PIL import Image, ImageOps, ImageEnhance
-from PyQt6 import QtWidgets, QtGui
+import numpy as np
+from imageio.v3 import imread, imwrite
+from PyQt6 import QtWidgets
 
 BASE_DIR = "/home/ben/Pictures/"
 DEVICE_NAME = "genesys:libusb:001:005"
@@ -45,7 +45,7 @@ class OneClickScan(QtWidgets.QMainWindow):
 
         if os.path.isfile(outfile):
             self.file_name_input.increment()
-            return self.get_output_filename()
+            return self.get_output_file()
 
         return os.path.join(outdir, outfile)
 
@@ -58,7 +58,7 @@ class OneClickScan(QtWidgets.QMainWindow):
             subprocess.run([
                 "scanimage",
                 "--device-name", DEVICE_NAME,
-                "--format", "png",
+                "--format", "tiff",
                 "--mode", "Color",
                 "--resolution", "3600",
                 "--progress",
@@ -69,17 +69,14 @@ class OneClickScan(QtWidgets.QMainWindow):
             self.set_scan_state(False)
             return False
 
-        image = Image.open(scan_output)
-        img_enhance = ImageEnhance.Brightness(image)
-        # image = img_enhance.enhance(3.0)
-        image = ImageOps.autocontrast(image, preserve_tone=True)
-
-
+        img = load_image(scan_output)
         outfile = self.get_output_file()
-        image.save(outfile)
+        imwrite(outfile, (img * 255).astype(np.uint8))
         logging.info(f"Saved image to {outfile}")
+        show_image(outfile)
         self.file_name_input.increment()
         self.set_scan_state(False)
+
         return True
 
     def set_scan_state(self, scanning):
@@ -89,6 +86,27 @@ class OneClickScan(QtWidgets.QMainWindow):
         else:
             self.scan_button.setDisabled(False)
             self.scan_button.setText("Scan")
+
+        self.update()
+
+
+def linear_to_sRGB(v):
+    return ((v > 0.0031308) * (1.055 * np.power(v, (1 / 2.4)) - 0.055)
+            + (v <= 0.0031308) * (v * 12.92))
+
+
+def load_image(path):
+    img = imread(path)
+    img = img / (2**16 - 1)
+    img = linear_to_sRGB(img)
+    return img
+
+
+def show_image(path):
+    # https://stackoverflow.com/a/35305473
+    command = {'linux': 'xdg-open', 'win32': 'explorer', 'darwin': 'open'}[sys.platform]
+    subprocess.run([command, path])
+
 
 # Reimplemented to always show padded ints
 class PaddedIntegerSpinbox(QtWidgets.QSpinBox):
