@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import subprocess
 import logging
 import numpy as np
@@ -8,11 +9,19 @@ from imageio.v3 import imread, imwrite
 from PyQt6 import QtWidgets, QtGui, QtCore
 
 BASE_DIR = "/home/compaq/Bilder/"
-DEVICE_NAME = "genesys:libusb:002:003"
+SCANNER_ID = '07b3:0c3b'
 CROP = [0, 350, 0, 280]  # t,b,l,r
 SCALE_VALUES = False
 ROT90 = 2
 
+
+lsusb = subprocess.run(["lsusb", "-d", SCANNER_ID], check=True, stdout=subprocess.PIPE).stdout
+match = re.match("Bus (\d{3}) Device (\d{3}): *", lsusb)
+if match is None:
+    logging.error("Scanner not found, please plug it in NOW!")
+    exit()
+
+DEVICE_NAME = f"genesys:libusb:{match[1]:03d}:{match[2]:03d}"
 # translate to array slices
 CROP = [CROP[0], -(CROP[1]+1), CROP[2], -(CROP[3]+1)]
 
