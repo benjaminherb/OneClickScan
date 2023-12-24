@@ -106,7 +106,7 @@ def load_image(path):
     img = np.rot90(img, ROT90, axes=(0,1))
     img = img / (2**16 - 1)
     img = linear_to_sRGB(img)
-    img = img[CROP[0]:-CROP[1], CROP[2]:-CROP[3],:]
+    img = img[CROP[0]:CROP[1], CROP[2]:CROP[3], :]
     if SCALE_VALUES:
         img = (img - img.min()) / (img.max() - img.min())
     return img
