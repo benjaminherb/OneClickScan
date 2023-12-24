@@ -3,6 +3,7 @@ import sys
 import subprocess
 import logging
 import numpy as np
+import time
 from imageio.v3 import imread, imwrite
 from PyQt6 import QtWidgets, QtGui, QtCore
 
@@ -70,7 +71,7 @@ class OneClickScan(QtWidgets.QMainWindow):
 
         scan_output = "/tmp/tmponeclickscan.tiff"
         try:
-            subprocess.run([
+            process = subprocess.Popen([
                 "scanimage",
                 "--device-name", DEVICE_NAME,
                 "--format", "tiff",
@@ -79,7 +80,11 @@ class OneClickScan(QtWidgets.QMainWindow):
                 "--resolution", "3600",
                 "--progress",
                 "--output-file", scan_output
-            ], check=True, capture_output=True)
+            ])
+            while process.poll() is None:
+                time.sleep(0.2)
+                self.app.processEvents()
+
         except subprocess.CalledProcessError as e:
             logging.error(f"ScanImageError: {str(e.stderr, 'utf8')}")
             self.set_scan_state(False)
@@ -97,9 +102,13 @@ class OneClickScan(QtWidgets.QMainWindow):
     def set_scan_state(self, scanning):
         if scanning:
             self.scan_button.setDisabled(True)
+            self.file_name_input.setDisabled(True)
+            self.dir_name_input.setDisabled(True)
             self.scan_button.setText("Scanning...")
         else:
             self.scan_button.setDisabled(False)
+            self.file_name_input.setDisabled(False)
+            self.dir_name_input.setDisabled(False)
             self.scan_button.setText("Scan")
 
         self.app.processEvents()
