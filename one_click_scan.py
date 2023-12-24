@@ -9,7 +9,8 @@ from PyQt6 import QtWidgets
 
 BASE_DIR = "/home/ben/Pictures/"
 DEVICE_NAME = "genesys:libusb:001:005"
-CROP = [0, 0, 0, 0]  # t,b,l,rd
+CROP = [0, 0, 0, 0]  # t,b,l,r
+SCALE_VALUES = True
 
 
 class OneClickScan(QtWidgets.QMainWindow):
@@ -101,6 +102,8 @@ def load_image(path):
     img = img / (2**16 - 1)
     img = linear_to_sRGB(img)
     img = img[CROP[0]:-CROP[1], CROP[2]:-CROP[3]]
+    if SCALE_VALUES:
+        img = (img - img.min()) / (img.max() - img.min())
     return img
 
 
