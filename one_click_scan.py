@@ -57,7 +57,9 @@ class OneClickScan(QtWidgets.QMainWindow):
     def scan(self):
         outfile = self.get_output_file()
         if os.path.isfile(outfile):
-            answer = QtWidgets.QMessageBox.question(self, '', "Are you sure to reset all the values?", qm.Yes | qm.No)
+            answer = QtWidgets.QMessageBox.question(
+                self, '', f"The {outfile} already exists! Overwrite?",
+                QtWidgets.QMessageBox.ButtonRole.YesRole | QtWidgets.QMessageBox.ButtonRole.NoRole)
             if answer == QtWidgets.QMessageBox.ButtonRole.NoRole:
                 return False
 
