@@ -8,7 +8,7 @@ from PyQt6 import QtWidgets
 
 BASE_DIR = "/home/jonas/Bilder/"
 DEVICE_NAME = "genesys:libusb:001:017"
-CROP = [0, 0, 0, 0]  # t,b,l,r
+CROP = [0, 350, 0, 280]  # t,b,l,r
 SCALE_VALUES = False
 ROT90 = 2
 
@@ -55,10 +55,15 @@ class OneClickScan(QtWidgets.QMainWindow):
         return os.path.join(outdir, outfile)
 
     def scan(self):
-        scan_output = "/tmp/tmponeclickscan.tiff"
+        outfile = self.get_output_file()
+        if os.path.isfile(outfile):
+            answer = QtWidgets.QMessageBox.question(self, '', "Are you sure to reset all the values?", qm.Yes | qm.No)
+            if answer == QtWidgets.QMessageBox.ButtonRole.NoRole:
+                return False
 
         self.set_scan_state(True)
 
+        scan_output = "/tmp/tmponeclickscan.tiff"
         try:
             subprocess.run([
                 "scanimage",
@@ -76,7 +81,6 @@ class OneClickScan(QtWidgets.QMainWindow):
             return False
 
         img = load_image(scan_output)
-        outfile = self.get_output_file()
         imwrite(outfile, (img * 255).astype(np.uint8))
         logging.info(f"Saved image to {outfile}")
         show_image(outfile)
@@ -94,6 +98,7 @@ class OneClickScan(QtWidgets.QMainWindow):
             self.scan_button.setText("Scan")
 
         self.scan_button.update()
+        self.update()
 
 
 def linear_to_sRGB(v):
