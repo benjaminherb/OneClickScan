@@ -1,16 +1,16 @@
 import os
 import sys
 import subprocess
-import tempfile
 import logging
 import numpy as np
 from imageio.v3 import imread, imwrite
 from PyQt6 import QtWidgets
 
-BASE_DIR = "/home/ben/Pictures/"
-DEVICE_NAME = "genesys:libusb:001:005"
-CROP = [0, 0, 0, 0]  # t,b,l,r
+BASE_DIR = "/home/jonas/Bilder/"
+DEVICE_NAME = "genesys:libusb:001:017"
+CROP = [0, -1, 0, -1]  # t,b,l,r
 SCALE_VALUES = True
+ROT90 = 2
 
 
 class OneClickScan(QtWidgets.QMainWindow):
@@ -52,7 +52,7 @@ class OneClickScan(QtWidgets.QMainWindow):
         return os.path.join(outdir, outfile)
 
     def scan(self):
-        scan_output = tempfile.mktemp()
+        scan_output = "tmponeclickscan.tiff"
 
         self.set_scan_state(True)
 
@@ -62,6 +62,7 @@ class OneClickScan(QtWidgets.QMainWindow):
                 "--device-name", DEVICE_NAME,
                 "--format", "tiff",
                 "--mode", "Color",
+                "--depth", "16",
                 "--resolution", "3600",
                 "--progress",
                 "--output-file", scan_output
@@ -98,10 +99,11 @@ def linear_to_sRGB(v):
 
 
 def load_image(path):
-    img = imread(path)
+    img = imread(path, extension='.tiff')
+    img = np.rot90(img, ROT90)
     img = img / (2**16 - 1)
     img = linear_to_sRGB(img)
-    img = img[CROP[0]:-CROP[1], CROP[2]:-CROP[3]]
+    img = img[CROP[0]:-CROP[1], CROP[2]:-CROP[3],:]
     if SCALE_VALUES:
         img = (img - img.min()) / (img.max() - img.min())
     return img
