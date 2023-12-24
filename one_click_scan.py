@@ -59,8 +59,8 @@ class OneClickScan(QtWidgets.QMainWindow):
         if os.path.isfile(outfile):
             answer = QtWidgets.QMessageBox.question(
                 self, '', f"The {outfile} already exists! Overwrite?",
-                QtWidgets.QMessageBox.ButtonRole.YesRole | QtWidgets.QMessageBox.ButtonRole.NoRole)
-            if answer == QtWidgets.QMessageBox.ButtonRole.NoRole:
+                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No)
+            if answer == QtWidgets.QMessageBox.StandardButton.No:
                 return False
 
         self.set_scan_state(True)
