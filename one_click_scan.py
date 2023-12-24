@@ -4,7 +4,7 @@ import subprocess
 import logging
 import numpy as np
 from imageio.v3 import imread, imwrite
-from PyQt6 import QtWidgets
+from PyQt6 import QtWidgets, QtGui, QtCore
 
 BASE_DIR = "/home/jonas/Bilder/"
 DEVICE_NAME = "genesys:libusb:001:017"
@@ -17,16 +17,19 @@ CROP = [CROP[0], -(CROP[1]+1), CROP[2], -(CROP[3]+1)]
 
 
 class OneClickScan(QtWidgets.QMainWindow):
-    def __init__(self):
+    def __init__(self, app=None):
         super(OneClickScan, self).__init__()
+        self.app = app
         self.setMinimumWidth(400)
         self.setWindowTitle("OneClickScan")
 
         self.dir_name_label = QtWidgets.QLabel("Folder Name:")
         self.dir_name_input = QtWidgets.QLineEdit()
+        self.dir_name_input.returnPressed.connect(self.scan)
 
         self.file_name_label = QtWidgets.QLabel("File Name:")
         self.file_name_input = PaddedIntegerSpinbox()
+        self.file_name_input.lineEdit().returnPressed.connect(self.scan)
 
         self.scan_button = QtWidgets.QPushButton("Scan")
         self.scan_button.clicked.connect(self.scan)
@@ -99,8 +102,12 @@ class OneClickScan(QtWidgets.QMainWindow):
             self.scan_button.setDisabled(False)
             self.scan_button.setText("Scan")
 
-        self.scan_button.update()
-        self.update()
+        self.app.processEvents()
+
+    def keyPressEvent(self, event):
+        if type(event) == QtGui.QKeyEvent:
+            if event.key() == QtCore.Qt.Key.Key_Enter:
+                self.scan()
 
 
 def linear_to_sRGB(v):
@@ -141,6 +148,6 @@ class PaddedIntegerSpinbox(QtWidgets.QSpinBox):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName("OneClickScan")
-    ocs = OneClickScan()
+    ocs = OneClickScan(app)
     ocs.show()
     app.exec()
