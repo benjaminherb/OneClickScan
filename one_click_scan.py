@@ -8,9 +8,12 @@ from PyQt6 import QtWidgets
 
 BASE_DIR = "/home/jonas/Bilder/"
 DEVICE_NAME = "genesys:libusb:001:017"
-CROP = [0, -1, 0, -1]  # t,b,l,r
-SCALE_VALUES = True
+CROP = [0, 0, 0, 0]  # t,b,l,r
+SCALE_VALUES = False
 ROT90 = 2
+
+# translate to array slices
+CROP = [CROP[0], -(CROP[1]+1), CROP[2], -(CROP[3]+1)]
 
 
 class OneClickScan(QtWidgets.QMainWindow):
@@ -52,7 +55,7 @@ class OneClickScan(QtWidgets.QMainWindow):
         return os.path.join(outdir, outfile)
 
     def scan(self):
-        scan_output = "tmponeclickscan.tiff"
+        scan_output = "/tmp/tmponeclickscan.tiff"
 
         self.set_scan_state(True)
 
@@ -90,7 +93,7 @@ class OneClickScan(QtWidgets.QMainWindow):
             self.scan_button.setDisabled(False)
             self.scan_button.setText("Scan")
 
-        self.update()
+        self.scan_button.update()
 
 
 def linear_to_sRGB(v):
@@ -100,7 +103,7 @@ def linear_to_sRGB(v):
 
 def load_image(path):
     img = imread(path, extension='.tiff')
-    img = np.rot90(img, ROT90)
+    img = np.rot90(img, ROT90, axes=(0,1))
     img = img / (2**16 - 1)
     img = linear_to_sRGB(img)
     img = img[CROP[0]:-CROP[1], CROP[2]:-CROP[3],:]
