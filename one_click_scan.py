@@ -7,8 +7,8 @@ import time
 from imageio.v3 import imread, imwrite
 from PyQt6 import QtWidgets, QtGui, QtCore
 
-BASE_DIR = "/home/jonas/Bilder/"
-DEVICE_NAME = "genesys:libusb:001:017"
+BASE_DIR = "/home/compaq/Bilder/"
+DEVICE_NAME = "genesys:libusb:002:003"
 CROP = [0, 350, 0, 280]  # t,b,l,r
 SCALE_VALUES = False
 ROT90 = 2
