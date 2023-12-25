@@ -40,7 +40,8 @@ class OneClickScan(QtWidgets.QMainWindow):
         self.dir_name_label = QtWidgets.QLabel("Folder Name:")
         self.dir_name_input = QtWidgets.QLineEdit()
         self.dir_name_input = QtWidgets.QComboBox()
-        self.dir_name_input.addItems(os.listdir(BASE_DIR))
+        self.dir_name_input.addItems(get_directories(BASE_DIR))
+        self.dir_name_input.setCurrentText('')
         self.dir_name_input.setEditable(True)
 
         self.dir_name_input.lineEdit().returnPressed.connect(self.scan)
@@ -90,7 +91,7 @@ class OneClickScan(QtWidgets.QMainWindow):
         self.setCentralWidget(tab_widget)
 
     def get_output_file(self):
-        outdir = os.path.join(BASE_DIR, self.dir_name_input.text())
+        outdir = os.path.join(BASE_DIR, self.dir_name_input.currentText())
         outfile = self.file_name_input.text()
         if not os.path.isdir(outdir):
             os.mkdir(outdir)
@@ -185,9 +186,12 @@ class OneClickScan(QtWidgets.QMainWindow):
         self.app.processEvents()
         current_directory = self.dir_name_input.currentText()
         self.dir_name_input.clear()
-        self.dir_name_input.addItems(os.listdir(BASE_DIR))
+        self.dir_name_input.addItems(get_directories(BASE_DIR))
         self.dir_name_input.setCurrentText(current_directory)
 
+
+def get_directories(path):
+    return [d for d in os.listdir(path) if os.path.isdir(d) and not d.startswith('.')]
 
 
 def linear_to_sRGB(v):
