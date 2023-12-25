@@ -15,7 +15,7 @@ DEFAULT_ROTATE = True
 SCANNER_ID = '07b3:0c3b'
 SCALE_VALUES = True
 TEMP_FILE = '.tmpimg.tiff'
-DEBUG = True
+DEBUG = False
 
 # --- Setup --- #
 if DEBUG:
@@ -193,7 +193,6 @@ class OneClickScan(QtWidgets.QMainWindow):
         command = {'linux': 'xdg-open', 'win32': 'explorer', 'darwin': 'open'}[sys.platform]
         subprocess.Popen([command, d])
 
-
     def refresh(self):
         self.app.processEvents()
         current_directory = self.dir_name_input.currentText()
@@ -203,7 +202,8 @@ class OneClickScan(QtWidgets.QMainWindow):
 
 
 def get_directories(path):
-    return [d for d in os.listdir(path) if os.path.isdir(d) and not d.startswith('.')]
+    return [d for d in os.listdir(path) if not d.startswith('.') and os.path.isdir(os.path.join(BASE_DIR, d))]
+
 
 
 def linear_to_sRGB(v):
