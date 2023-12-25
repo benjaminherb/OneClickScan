@@ -10,20 +10,16 @@ from PyQt6 import QtWidgets, QtGui, QtCore
 
 BASE_DIR = "/home/compaq/Bilder/"
 SCANNER_ID = '07b3:0c3b'
-CROP = [0, 350, 0, 280]  # t,b,l,r
-SCALE_VALUES = False
-ROT90 = 2
+DEFAULT_CROP = [0, 350, 0, 280]  # t,b,l,r
+SCALE_VALUES = True
 
-
-lsusb = subprocess.run(["lsusb", "-d", SCANNER_ID], check=True, stdout=subprocess.PIPE).stdout
+lsusb = subprocess.run(["lsusb", "-d", SCANNER_ID], check=True, stdout=subprocess.PIPE, text=True).stdout
 match = re.match("Bus (\d{3}) Device (\d{3}): *", lsusb)
 if match is None:
     logging.error("Scanner not found, please plug it in NOW!")
     exit()
 
-DEVICE_NAME = f"genesys:libusb:{match[1]:03d}:{match[2]:03d}"
-# translate to array slices
-CROP = [CROP[0], -(CROP[1]+1), CROP[2], -(CROP[3]+1)]
+DEVICE_NAME = f"genesys:libusb:{match[1]}:{match[2]}"
 
 
 class OneClickScan(QtWidgets.QMainWindow):
@@ -41,19 +37,45 @@ class OneClickScan(QtWidgets.QMainWindow):
         self.file_name_input = PaddedIntegerSpinbox()
         self.file_name_input.lineEdit().returnPressed.connect(self.scan)
 
+        self.rotate_checkbox = QtWidgets.QCheckBox()
+        self.rotate_checkbox.setChecked(True)
+
+        self.crop_t_input = QtWidgets.QSpinBox()
+        self.crop_b_input = QtWidgets.QSpinBox()
+        self.crop_l_input = QtWidgets.QSpinBox()
+        self.crop_r_input = QtWidgets.QSpinBox()
+        for i, sb in enumerate([self.crop_t_input, self.crop_b_input, self.crop_l_input, self.crop_r_input]):
+            sb.setMinimum(0)
+            sb.setMaximum(2000)
+            sb.setValue(DEFAULT_CROP[i])
+
         self.scan_button = QtWidgets.QPushButton("Scan")
         self.scan_button.clicked.connect(self.scan)
 
-        layout = QtWidgets.QGridLayout()
-        layout.addWidget(self.dir_name_label, 0, 0)
-        layout.addWidget(self.dir_name_input, 0, 1)
-        layout.addWidget(self.file_name_label, 1, 0)
-        layout.addWidget(self.file_name_input, 1, 1)
-        layout.addWidget(self.scan_button, 2, 0, 1, 2)
+        scan_layout = QtWidgets.QGridLayout()
+        scan_layout.addWidget(self.dir_name_label, 0, 0)
+        scan_layout.addWidget(self.dir_name_input, 0, 1, 1, 4)
+        scan_layout.addWidget(self.file_name_label, 1, 0)
+        scan_layout.addWidget(self.file_name_input, 1, 1, 1, 4)
+        scan_layout.addWidget(self.scan_button, 4, 0, 1, 5)
 
-        main_widget = QtWidgets.QWidget()
-        main_widget.setLayout(layout)
-        self.setCentralWidget(main_widget)
+        settings_layout = QtWidgets.QGridLayout()
+        settings_layout.addWidget(QtWidgets.QLabel('Crop (t/b/l/r):'), 2, 0)
+        settings_layout.addWidget(self.crop_t_input, 2, 1)
+        settings_layout.addWidget(self.crop_b_input, 2, 2)
+        settings_layout.addWidget(self.crop_l_input, 2, 3)
+        settings_layout.addWidget(self.crop_r_input, 2, 4)
+        settings_layout.addWidget(QtWidgets.QLabel('Rotate (180°):'), 3, 0)
+        settings_layout.addWidget(self.rotate_checkbox, 3, 1, 1, 4)
+
+        scan_widget = QtWidgets.QWidget()
+        scan_widget.setLayout(scan_layout)
+        settings_widget = QtWidgets.QWidget()
+        settings_widget.setLayout(settings_layout)
+        tab_widget = QtWidgets.QTabWidget()
+        tab_widget.addTab(scan_widget, 'Scanning')
+        tab_widget.addTab(settings_widget, 'Settings')
+        self.setCentralWidget(tab_widget)
 
     def get_output_file(self):
         outdir = os.path.join(BASE_DIR, self.dir_name_input.text())
@@ -99,7 +121,7 @@ class OneClickScan(QtWidgets.QMainWindow):
             self.set_scan_state(False)
             return False
 
-        img = load_image(scan_output)
+        img = self.load_image(scan_output)
         imwrite(outfile, (img * 255).astype(np.uint8))
         logging.info(f"Saved image to {outfile}")
         show_image(outfile)
@@ -109,16 +131,18 @@ class OneClickScan(QtWidgets.QMainWindow):
         return True
 
     def set_scan_state(self, scanning):
+        self.scan_button.setDisabled(scanning)
+        self.file_name_input.setDisabled(scanning)
+        self.dir_name_input.setDisabled(scanning)
+        self.rotate_checkbox.setDisabled(scanning)
+        self.crop_t_input.setDisabled(scanning)
+        self.crop_b_input.setDisabled(scanning)
+        self.crop_l_input.setDisabled(scanning)
+        self.crop_r_input.setDisabled(scanning)
+
+        self.scan_button.setText("Scan")
         if scanning:
-            self.scan_button.setDisabled(True)
-            self.file_name_input.setDisabled(True)
-            self.dir_name_input.setDisabled(True)
             self.scan_button.setText("Scanning...")
-        else:
-            self.scan_button.setDisabled(False)
-            self.file_name_input.setDisabled(False)
-            self.dir_name_input.setDisabled(False)
-            self.scan_button.setText("Scan")
 
         self.app.processEvents()
 
@@ -127,21 +151,28 @@ class OneClickScan(QtWidgets.QMainWindow):
             if event.key() == QtCore.Qt.Key.Key_Enter:
                 self.scan()
 
+    def load_image(self, path):
+        img = imread(path, extension='.tiff')
+        if self.rotate_checkbox.isChecked():
+            img = np.rot90(img, 2, axes=(0, 1))
+        crop = self.get_crop()
+        img = img[crop[0]:crop[1], crop[2]:crop[3], :]
+        img = img / (2**16 - 1)
+        img = linear_to_sRGB(img)
+        if SCALE_VALUES:
+            img = (img - img.min()) / (img.max() - img.min())
+        return img
+
+    def get_crop(self):
+        return [
+            self.crop_t_input.value(), -(self.crop_b_input.value()+1),
+            self.crop_l_input.value(), -(self.crop_r_input.value()+1)
+        ]
+
 
 def linear_to_sRGB(v):
     return ((v > 0.0031308) * (1.055 * np.power(v, (1 / 2.4)) - 0.055)
             + (v <= 0.0031308) * (v * 12.92))
-
-
-def load_image(path):
-    img = imread(path, extension='.tiff')
-    img = np.rot90(img, ROT90, axes=(0,1))
-    img = img / (2**16 - 1)
-    img = linear_to_sRGB(img)
-    img = img[CROP[0]:CROP[1], CROP[2]:CROP[3], :]
-    if SCALE_VALUES:
-        img = (img - img.min()) / (img.max() - img.min())
-    return img
 
 
 def show_image(path):
