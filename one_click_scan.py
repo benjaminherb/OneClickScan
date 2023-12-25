@@ -15,7 +15,7 @@ DEFAULT_ROTATE = True
 SCANNER_ID = '07b3:0c3b'
 SCALE_VALUES = True
 TEMP_FILE = '.tmpimg.tiff'
-DEBUG = False
+DEBUG = True
 
 # --- Setup --- #
 if DEBUG:
@@ -41,8 +41,10 @@ class OneClickScan(QtWidgets.QMainWindow):
         self.dir_name_input = QtWidgets.QLineEdit()
         self.dir_name_input = QtWidgets.QComboBox()
         self.dir_name_input.addItems(get_directories(BASE_DIR))
-        self.dir_name_input.setCurrentText('')
         self.dir_name_input.setEditable(True)
+        self.dir_name_input.setCurrentText('')
+        self.open_dir_button = QtWidgets.QPushButton('Open')
+        self.open_dir_button.clicked.connect(self.open_dir)
 
         self.dir_name_input.lineEdit().returnPressed.connect(self.scan)
 
@@ -67,19 +69,21 @@ class OneClickScan(QtWidgets.QMainWindow):
 
         scan_layout = QtWidgets.QGridLayout()
         scan_layout.addWidget(self.dir_name_label, 0, 0)
-        scan_layout.addWidget(self.dir_name_input, 0, 1, 1, 4)
+        scan_layout.addWidget(self.dir_name_input, 0, 1)
+        scan_layout.addWidget(self.open_dir_button, 0, 2)
         scan_layout.addWidget(self.file_name_label, 1, 0)
-        scan_layout.addWidget(self.file_name_input, 1, 1, 1, 4)
-        scan_layout.addWidget(self.scan_button, 4, 0, 1, 5)
+        scan_layout.addWidget(self.file_name_input, 1, 1, 1, 2)
+        scan_layout.addWidget(self.scan_button, 4, 0, 1, 3)
+        scan_layout.setColumnStretch(1, 1)
 
         settings_layout = QtWidgets.QGridLayout()
-        settings_layout.addWidget(QtWidgets.QLabel('Crop (t/b/l/r):'), 2, 0)
-        settings_layout.addWidget(self.crop_t_input, 2, 1)
-        settings_layout.addWidget(self.crop_b_input, 2, 2)
-        settings_layout.addWidget(self.crop_l_input, 2, 3)
-        settings_layout.addWidget(self.crop_r_input, 2, 4)
-        settings_layout.addWidget(QtWidgets.QLabel('Rotate (180°):'), 3, 0)
-        settings_layout.addWidget(self.rotate_checkbox, 3, 1, 1, 4)
+        settings_layout.addWidget(QtWidgets.QLabel('Crop (t/b/l/r):'), 0, 0)
+        settings_layout.addWidget(self.crop_t_input, 0, 1)
+        settings_layout.addWidget(self.crop_b_input, 0, 2)
+        settings_layout.addWidget(self.crop_l_input, 0, 3)
+        settings_layout.addWidget(self.crop_r_input, 0, 4)
+        settings_layout.addWidget(QtWidgets.QLabel('Rotate (180°):'), 1, 0)
+        settings_layout.addWidget(self.rotate_checkbox, 1, 1, 1, 4)
 
         scan_widget = QtWidgets.QWidget()
         scan_widget.setLayout(scan_layout)
@@ -181,6 +185,14 @@ class OneClickScan(QtWidgets.QMainWindow):
             self.crop_t_input.value(), -(self.crop_b_input.value()+1),
             self.crop_l_input.value(), -(self.crop_r_input.value()+1)
         ]
+
+    def open_dir(self):
+        d = os.path.join(BASE_DIR, self.dir_name_input.currentText())
+        if not os.path.exists(d):
+            d = BASE_DIR
+        command = {'linux': 'xdg-open', 'win32': 'explorer', 'darwin': 'open'}[sys.platform]
+        subprocess.Popen([command, d])
+
 
     def refresh(self):
         self.app.processEvents()
