@@ -14,15 +14,20 @@ DEFAULT_CROP = [0, 350, 0, 280]  # t,b,l,r
 DEFAULT_ROTATE = True
 SCANNER_ID = '07b3:0c3b'
 SCALE_VALUES = True
+TEMP_FILE = '.tmpimg.tiff'
+DEBUG = False
 
 # --- Setup --- #
-lsusb = subprocess.run(["lsusb", "-d", SCANNER_ID], check=True, stdout=subprocess.PIPE, text=True).stdout
-match = re.match("Bus (\d{3}) Device (\d{3}): *", lsusb)
-if match is None:
-    logging.error("Scanner not found, please plug it in NOW!")
-    exit()
+if DEBUG:
+    BASE_DIR = '/Users/ben/Pictures'
+else:
+    lsusb = subprocess.run(["lsusb", "-d", SCANNER_ID], check=True, stdout=subprocess.PIPE, text=True).stdout
+    match = re.match("Bus (\d{3}) Device (\d{3}): *", lsusb)
+    if match is None:
+        logging.error("Scanner not found, please plug it in NOW!")
+        exit()
 
-DEVICE_NAME = f"genesys:libusb:{match[1]}:{match[2]}"
+    DEVICE_NAME = f"genesys:libusb:{match[1]}:{match[2]}"
 
 
 class OneClickScan(QtWidgets.QMainWindow):
@@ -34,7 +39,11 @@ class OneClickScan(QtWidgets.QMainWindow):
 
         self.dir_name_label = QtWidgets.QLabel("Folder Name:")
         self.dir_name_input = QtWidgets.QLineEdit()
-        self.dir_name_input.returnPressed.connect(self.scan)
+        self.dir_name_input = QtWidgets.QComboBox()
+        self.dir_name_input.addItems(os.listdir(BASE_DIR))
+        self.dir_name_input.setEditable(True)
+
+        self.dir_name_input.lineEdit().returnPressed.connect(self.scan)
 
         self.file_name_label = QtWidgets.QLabel("File Name:")
         self.file_name_input = PaddedIntegerSpinbox()
@@ -103,7 +112,7 @@ class OneClickScan(QtWidgets.QMainWindow):
 
         self.set_scan_state(True)
 
-        scan_output = "/tmp/tmponeclickscan.tiff"
+        scan_output = TEMP_FILE
         try:
             process = subprocess.Popen([
                 "scanimage",
@@ -116,8 +125,8 @@ class OneClickScan(QtWidgets.QMainWindow):
                 "--output-file", scan_output
             ])
             while process.poll() is None:
-                time.sleep(0.2)
-                self.app.processEvents()
+                time.sleep(0.5)
+                self.refresh()
 
         except subprocess.CalledProcessError as e:
             logging.error(f"ScanImageError: {str(e.stderr, 'utf8')}")
@@ -147,7 +156,7 @@ class OneClickScan(QtWidgets.QMainWindow):
         if scanning:
             self.scan_button.setText("Scanning...")
 
-        self.app.processEvents()
+        self.refresh()
 
     def keyPressEvent(self, event):
         if type(event) == QtGui.QKeyEvent:
@@ -171,6 +180,14 @@ class OneClickScan(QtWidgets.QMainWindow):
             self.crop_t_input.value(), -(self.crop_b_input.value()+1),
             self.crop_l_input.value(), -(self.crop_r_input.value()+1)
         ]
+
+    def refresh(self):
+        self.app.processEvents()
+        current_directory = self.dir_name_input.currentText()
+        self.dir_name_input.clear()
+        self.dir_name_input.addItems(os.listdir(BASE_DIR))
+        self.dir_name_input.setCurrentText(current_directory)
+
 
 
 def linear_to_sRGB(v):
