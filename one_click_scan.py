@@ -8,11 +8,14 @@ import time
 from imageio.v3 import imread, imwrite
 from PyQt6 import QtWidgets, QtGui, QtCore
 
+# --- Default Settings --- #
 BASE_DIR = "/home/compaq/Bilder/"
-SCANNER_ID = '07b3:0c3b'
 DEFAULT_CROP = [0, 350, 0, 280]  # t,b,l,r
+DEFAULT_ROTATE = True
+SCANNER_ID = '07b3:0c3b'
 SCALE_VALUES = True
 
+# --- Setup --- #
 lsusb = subprocess.run(["lsusb", "-d", SCANNER_ID], check=True, stdout=subprocess.PIPE, text=True).stdout
 match = re.match("Bus (\d{3}) Device (\d{3}): *", lsusb)
 if match is None:
@@ -38,7 +41,7 @@ class OneClickScan(QtWidgets.QMainWindow):
         self.file_name_input.lineEdit().returnPressed.connect(self.scan)
 
         self.rotate_checkbox = QtWidgets.QCheckBox()
-        self.rotate_checkbox.setChecked(True)
+        self.rotate_checkbox.setChecked(DEFAULT_ROTATE)
 
         self.crop_t_input = QtWidgets.QSpinBox()
         self.crop_b_input = QtWidgets.QSpinBox()
